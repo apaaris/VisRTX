@@ -120,9 +120,9 @@ PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
 )
 
-target_link_libraries(${PROJECT_NAME}
-PUBLIC
-  anari::anari
+target_link_libraries(${PROJECT_NAME} PUBLIC
+  anari::anari_headers
+  anari::anari_backend
   Threads::Threads
 )
 

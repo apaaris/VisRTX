@@ -29,32 +29,38 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// anari_cpp
-#include <anari/anari_cpp.hpp>
-// VisRTX
-#include "anari/ext/visrtx/makeVisRTXDevice.h"
+#pragma once
 
-static void statusFunc(const void * /*userData*/,
-    ANARIDevice /*device*/,
-    ANARIObject source,
-    ANARIDataType /*sourceType*/,
-    ANARIStatusSeverity severity,
-    ANARIStatusCode /*code*/,
-    const char *message)
-{
-  if (severity == ANARI_SEVERITY_FATAL_ERROR) {
-    printf("===ERROR===\n\n %s\n", message);
-    exit(0);
-  } else if (severity == ANARI_SEVERITY_INFO)
-    printf("%s\n", message);
-  fflush(stdout);
-}
+#include "array/Array3D.h"
+#include "spatial_field/SpatialField.h"
 
-int main()
+namespace visrtx {
+
+struct StructuredRegularField : public SpatialField
 {
-  auto device = makeVisRTXDevice(statusFunc);
-  anari::setParameter(device, device, "forceInit", true);
-  anari::commitParameters(device, device);
-  anari::release(device, device);
-  return 0;
-}
+  StructuredRegularField(DeviceGlobalState *d);
+  ~StructuredRegularField();
+
+  void commitParameters() override;
+  void finalize() override;
+  bool isValid() const override;
+
+  box3 bounds() const override;
+  float stepSize() const override;
+
+ private:
+  SpatialFieldGPUData gpuData() const override;
+  void cleanup();
+
+  void buildGrid();
+
+  vec3 m_origin;
+  vec3 m_spacing;
+  std::string m_filter;
+  helium::ChangeObserverPtr<Array3D> m_data;
+
+  cudaArray_t m_cudaArray{};
+  cudaTextureObject_t m_textureObject{};
+};
+
+} // namespace visrtx

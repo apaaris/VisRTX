@@ -29,32 +29,45 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// anari_cpp
-#include <anari/anari_cpp.hpp>
-// VisRTX
-#include "anari/ext/visrtx/makeVisRTXDevice.h"
+#pragma once
 
-static void statusFunc(const void * /*userData*/,
-    ANARIDevice /*device*/,
-    ANARIObject source,
-    ANARIDataType /*sourceType*/,
-    ANARIStatusSeverity severity,
-    ANARIStatusCode /*code*/,
-    const char *message)
-{
-  if (severity == ANARI_SEVERITY_FATAL_ERROR) {
-    printf("===ERROR===\n\n %s\n", message);
-    exit(0);
-  } else if (severity == ANARI_SEVERITY_INFO)
-    printf("%s\n", message);
-  fflush(stdout);
-}
+#include "geometry/Geometry.h"
+#include "material/Material.h"
 
-int main()
+namespace visrtx {
+
+struct Surface : public RegisteredObject<SurfaceGPUData>
 {
-  auto device = makeVisRTXDevice(statusFunc);
-  anari::setParameter(device, device, "forceInit", true);
-  anari::commitParameters(device, device);
-  anari::release(device, device);
-  return 0;
-}
+  Surface(DeviceGlobalState *d);
+
+  void commitParameters() override;
+  void finalize() override;
+  void markFinalized() override;
+  bool isValid() const override;
+
+  Geometry *geometry();
+  const Geometry *geometry() const;
+  Material *material();
+  const Material *material() const;
+
+  bool isVisible() const;
+
+  OptixBuildInput buildInput() const;
+
+ private:
+  bool geometryIsValid() const;
+  bool materialIsValid() const;
+  SurfaceGPUData gpuData() const override;
+
+  helium::IntrusivePtr<Geometry> m_geometry;
+  helium::IntrusivePtr<Material> m_material;
+
+  OptixBuildInput m_buildInput{};
+
+  uint32_t m_id{~0u};
+  bool m_visible{true};
+};
+
+} // namespace visrtx
+
+VISRTX_ANARI_TYPEFOR_SPECIALIZATION(visrtx::Surface *, ANARI_SURFACE);

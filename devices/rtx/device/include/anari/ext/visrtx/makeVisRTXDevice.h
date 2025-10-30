@@ -29,32 +29,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// anari_cpp
-#include <anari/anari_cpp.hpp>
-// VisRTX
-#include "anari/ext/visrtx/makeVisRTXDevice.h"
+#pragma once
 
-static void statusFunc(const void * /*userData*/,
-    ANARIDevice /*device*/,
-    ANARIObject source,
-    ANARIDataType /*sourceType*/,
-    ANARIStatusSeverity severity,
-    ANARIStatusCode /*code*/,
-    const char *message)
-{
-  if (severity == ANARI_SEVERITY_FATAL_ERROR) {
-    printf("===ERROR===\n\n %s\n", message);
-    exit(0);
-  } else if (severity == ANARI_SEVERITY_INFO)
-    printf("%s\n", message);
-  fflush(stdout);
-}
+// anari
+#include <anari/anari.h>
+// visrtx
+#include "anari_library_visrtx_export.h"
 
-int main()
-{
-  auto device = makeVisRTXDevice(statusFunc);
-  anari::setParameter(device, device, "forceInit", true);
-  anari::commitParameters(device, device);
-  anari::release(device, device);
-  return 0;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+VISRTX_DEVICE_INTERFACE ANARIDevice makeVisRTXDevice(
+    ANARIStatusCallback defaultCallback ANARI_DEFAULT_VAL(0),
+    const void *userPtr ANARI_DEFAULT_VAL(0));
+
+#ifdef __cplusplus
 }
+#endif

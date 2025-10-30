@@ -29,32 +29,59 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// anari_cpp
-#include <anari/anari_cpp.hpp>
-// VisRTX
-#include "anari/ext/visrtx/makeVisRTXDevice.h"
+#pragma once
 
-static void statusFunc(const void * /*userData*/,
-    ANARIDevice /*device*/,
-    ANARIObject source,
-    ANARIDataType /*sourceType*/,
-    ANARIStatusSeverity severity,
-    ANARIStatusCode /*code*/,
-    const char *message)
-{
-  if (severity == ANARI_SEVERITY_FATAL_ERROR) {
-    printf("===ERROR===\n\n %s\n", message);
-    exit(0);
-  } else if (severity == ANARI_SEVERITY_INFO)
-    printf("%s\n", message);
-  fflush(stdout);
-}
+#include "Material.h"
+#include "gpu/gpu_objects.h"
+#include "mdl/MaterialRegistry.h"
+#include "optix_visrtx.h"
 
-int main()
+#include "libmdl/ArgumentBlockInstance.h"
+#include "sampler/Sampler.h"
+
+#include <optional>
+#include <unordered_map>
+
+namespace visrtx {
+
+struct MDL : public Material
 {
-  auto device = makeVisRTXDevice(statusFunc);
-  anari::setParameter(device, device, "forceInit", true);
-  anari::commitParameters(device, device);
-  anari::release(device, device);
-  return 0;
-}
+  MDL(DeviceGlobalState *d);
+  ~MDL() override;
+
+  void commitParameters() override;
+  void finalize() override;
+
+  // Handle source changes
+  void syncSource();
+  // Update actual implementation index to use for the material.
+  void syncImplementationIndex();
+  // Handle argument block update
+  void syncParameters();
+
+ private:
+  MaterialGPUData gpuData() const override;
+
+  void clearSamplers();
+
+  mutable DeviceBuffer m_argBlockBuffer;
+
+  std::string m_source;
+  std::string m_sourceType;
+  struct SamplerDesc {
+    Sampler* sampler;
+    std::string name;
+    bool isFromRegistry;
+    bool operator==(const SamplerDesc &other) const {
+      return sampler == other.sampler && name == other.name &&
+             isFromRegistry == other.isFromRegistry;
+    }
+  };
+  std::vector<SamplerDesc> m_samplers;
+
+  libmdl::Uuid m_uuid{};
+  mdl::MaterialRegistry::ImplementationIndex m_implementationIndex{};
+  std::optional<libmdl::ArgumentBlockInstance> m_argumentBlockInstance;
+};
+
+} // namespace visrtx

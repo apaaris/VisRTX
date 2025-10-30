@@ -29,32 +29,44 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// anari_cpp
-#include <anari/anari_cpp.hpp>
-// VisRTX
-#include "anari/ext/visrtx/makeVisRTXDevice.h"
+#pragma once
 
-static void statusFunc(const void * /*userData*/,
-    ANARIDevice /*device*/,
-    ANARIObject source,
-    ANARIDataType /*sourceType*/,
-    ANARIStatusSeverity severity,
-    ANARIStatusCode /*code*/,
-    const char *message)
-{
-  if (severity == ANARI_SEVERITY_FATAL_ERROR) {
-    printf("===ERROR===\n\n %s\n", message);
-    exit(0);
-  } else if (severity == ANARI_SEVERITY_INFO)
-    printf("%s\n", message);
-  fflush(stdout);
-}
+#include "array/Array1D.h"
+#include "volume/Volume.h"
+#include "spatial_field/SpatialField.h"
 
-int main()
+namespace visrtx {
+
+struct TransferFunction1D : public Volume
 {
-  auto device = makeVisRTXDevice(statusFunc);
-  anari::setParameter(device, device, "forceInit", true);
-  anari::commitParameters(device, device);
-  anari::release(device, device);
-  return 0;
-}
+  TransferFunction1D(DeviceGlobalState *d);
+  ~TransferFunction1D();
+
+  void commitParameters() override;
+  void finalize() override;
+  bool isValid() const override;
+
+ private:
+  VolumeGPUData gpuData() const override;
+  void discritizeTFData();
+  void createTFTexture();
+  void cleanup();
+
+  helium::ChangeObserverPtr<Array1D> m_color;
+  helium::ChangeObserverPtr<Array1D> m_opacity;
+
+  box1 m_valueRange{0.f, 1.f};
+  float m_unitDistance{1.f};
+  vec4 m_uniformColor{1.f};
+  float m_uniformOpacity{1.f};
+
+  helium::ChangeObserverPtr<SpatialField> m_field;
+
+  std::vector<vec4> m_tf;
+  int m_tfDim{256};
+
+  cudaArray_t m_cudaArray{};
+  cudaTextureObject_t m_textureObject{};
+};
+
+} // namespace visrtx

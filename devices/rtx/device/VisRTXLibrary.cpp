@@ -29,32 +29,54 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// anari_cpp
-#include <anari/anari_cpp.hpp>
-// VisRTX
-#include "anari/ext/visrtx/makeVisRTXDevice.h"
+#include "VisRTXDevice.h"
+#include "anari/backend/LibraryImpl.h"
+#include "anari_library_visrtx_export.h"
 
-static void statusFunc(const void * /*userData*/,
-    ANARIDevice /*device*/,
-    ANARIObject source,
-    ANARIDataType /*sourceType*/,
-    ANARIStatusSeverity severity,
-    ANARIStatusCode /*code*/,
-    const char *message)
+#include "anari/ext/visrtx/visrtx_extensions.h" // for compile testing
+
+namespace visrtx {
+
+const char **query_extensions();
+
+struct VisRTXLibrary : public anari::LibraryImpl
 {
-  if (severity == ANARI_SEVERITY_FATAL_ERROR) {
-    printf("===ERROR===\n\n %s\n", message);
-    exit(0);
-  } else if (severity == ANARI_SEVERITY_INFO)
-    printf("%s\n", message);
-  fflush(stdout);
+  VisRTXLibrary(
+      void *lib, ANARIStatusCallback defaultStatusCB, const void *statusCBPtr);
+
+  ANARIDevice newDevice(const char *subtype) override;
+  const char **getDeviceExtensions(const char *deviceType) override;
+};
+
+// Definitions ////////////////////////////////////////////////////////////////
+
+VisRTXLibrary::VisRTXLibrary(
+    void *lib, ANARIStatusCallback defaultStatusCB, const void *statusCBPtr)
+    : anari::LibraryImpl(lib, defaultStatusCB, statusCBPtr)
+{}
+
+ANARIDevice VisRTXLibrary::newDevice(const char * /*subtype*/)
+{
+  return (ANARIDevice) new VisRTXDevice(this_library());
 }
 
-int main()
+const char **VisRTXLibrary::getDeviceExtensions(const char * /*deviceType*/)
 {
-  auto device = makeVisRTXDevice(statusFunc);
-  anari::setParameter(device, device, "forceInit", true);
-  anari::commitParameters(device, device);
-  anari::release(device, device);
-  return 0;
+  return query_extensions();
+}
+
+} // namespace visrtx
+
+// Define library entrypoint //////////////////////////////////////////////////
+
+extern "C" VISRTX_DEVICE_INTERFACE ANARI_DEFINE_LIBRARY_ENTRYPOINT(
+    visrtx, handle, scb, scbPtr)
+{
+  return (ANARILibrary) new visrtx::VisRTXLibrary(handle, scb, scbPtr);
+}
+
+extern "C" VISRTX_DEVICE_INTERFACE ANARIDevice makeVisRTXDevice(
+    ANARIStatusCallback defaultCallback, const void *userPtr)
+{
+  return (ANARIDevice) new visrtx::VisRTXDevice(defaultCallback, userPtr);
 }

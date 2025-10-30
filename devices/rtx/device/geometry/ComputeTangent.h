@@ -29,32 +29,34 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// anari_cpp
+#pragma once
+
+#include "geometry/Triangle.h"
+// anari
 #include <anari/anari_cpp.hpp>
-// VisRTX
-#include "anari/ext/visrtx/makeVisRTXDevice.h"
+// glm
+#include <glm/fwd.hpp>
 
-static void statusFunc(const void * /*userData*/,
-    ANARIDevice /*device*/,
-    ANARIObject source,
-    ANARIDataType /*sourceType*/,
-    ANARIStatusSeverity severity,
-    ANARIStatusCode /*code*/,
-    const char *message)
-{
-  if (severity == ANARI_SEVERITY_FATAL_ERROR) {
-    printf("===ERROR===\n\n %s\n", message);
-    exit(0);
-  } else if (severity == ANARI_SEVERITY_INFO)
-    printf("%s\n", message);
-  fflush(stdout);
-}
+namespace visrtx {
 
-int main()
-{
-  auto device = makeVisRTXDevice(statusFunc);
-  anari::setParameter(device, device, "forceInit", true);
-  anari::commitParameters(device, device);
-  anari::release(device, device);
-  return 0;
-}
+void computeVertexNormals(glm::vec3 *normals, // Output vertex normals
+    const glm::vec3 *positions, // Input vertex positions
+    const glm::uvec3 *indices, // Input triangle indices
+    unsigned int numTriangles, // Number of triangles
+    unsigned int numNormals // Number of normals
+);
+
+template <typename TexCoord>
+void computeVertexTangents(
+    glm::vec4 *tangents, // Output tangent vectors with handedness (w component)
+    const glm::vec3 *positions, // Input vertex positions
+    const glm::vec3 *normals, // Input vertex normals
+    const TexCoord *texCoords, // Input texture coordinates
+    const glm::uvec3 *indices, // Input triangle indices
+    unsigned int numTriangles, // Number of triangles
+    unsigned int numNormals // Number of normals
+);
+
+void updateGeometryTangent(Triangle *triangle);
+
+} // namespace visrtx

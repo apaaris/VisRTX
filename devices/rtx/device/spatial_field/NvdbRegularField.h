@@ -29,32 +29,40 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// anari_cpp
-#include <anari/anari_cpp.hpp>
-// VisRTX
-#include "anari/ext/visrtx/makeVisRTXDevice.h"
+#pragma once
 
-static void statusFunc(const void * /*userData*/,
-    ANARIDevice /*device*/,
-    ANARIObject source,
-    ANARIDataType /*sourceType*/,
-    ANARIStatusSeverity severity,
-    ANARIStatusCode /*code*/,
-    const char *message)
-{
-  if (severity == ANARI_SEVERITY_FATAL_ERROR) {
-    printf("===ERROR===\n\n %s\n", message);
-    exit(0);
-  } else if (severity == ANARI_SEVERITY_INFO)
-    printf("%s\n", message);
-  fflush(stdout);
-}
+#include "array/Array1D.h"
+#include "spatial_field/SpatialField.h"
+#include "utility/DeviceBuffer.h"
 
-int main()
+#include <nanovdb/NanoVDB.h>
+
+namespace visrtx {
+
+struct NvdbRegularField : public SpatialField
 {
-  auto device = makeVisRTXDevice(statusFunc);
-  anari::setParameter(device, device, "forceInit", true);
-  anari::commitParameters(device, device);
-  anari::release(device, device);
-  return 0;
-}
+  NvdbRegularField(DeviceGlobalState *d);
+  ~NvdbRegularField();
+
+  void commitParameters() override;
+  void finalize() override;
+  bool isValid() const override;
+
+  box3 bounds() const override;
+  float stepSize() const override;
+
+ private:
+  SpatialFieldGPUData gpuData() const override;
+  void cleanup();
+
+  void buildGrid();
+
+  box3 m_bounds;
+  vec3 m_voxelSize;
+  std::string m_filter;
+  helium::ChangeObserverPtr<Array1D> m_data;
+  std::optional<nanovdb::GridMetaData> m_gridMetadata;
+  DeviceBuffer m_deviceBuffer;
+};
+
+} // namespace visrtx
